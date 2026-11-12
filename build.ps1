@@ -10,6 +10,8 @@ try {
     }
     & $Python -c "import sys; assert sys.platform == 'win32', 'Build on Windows'; assert sys.version_info >= (3,11); import customtkinter, PIL, yt_dlp, yt_dlp_ejs, PyInstaller"
     if ($LASTEXITCODE -ne 0) { throw "Missing dependencies. Run: $Python -m pip install -r requirements-build.txt" }
+    & $Python -c "import tkinter; app = tkinter.Tk(); app.withdraw(); app.destroy()"
+    if ($LASTEXITCODE -ne 0) { throw "Tcl/Tk startup failed. Build from a normal Windows desktop with the full Python Tcl/Tk installation accessible." }
     & $Python -m pip check
     if ($LASTEXITCODE -ne 0) { throw "Python dependency validation failed." }
     New-Item -ItemType Directory -Force vendor | Out-Null
@@ -41,29 +43,33 @@ try {
         $destination = [IO.Path]::GetFullPath("$PSScriptRoot/vendor/$name")
         if ($source -ne $destination) { Copy-Item -LiteralPath $source -Destination $destination }
         $versionArgument = if ($name -eq 'deno.exe') { '--version' } else { '-version' }
-        & $destination $versionArgument | Select-Object -First 1
+        $versionOutput = & $destination $versionArgument
         if ($LASTEXITCODE -ne 0) { throw "$name failed its version check. Use standalone binaries matching Windows architecture." }
+        Write-Host $versionOutput[0]
     }
     if (-not (Test-Path vendor/licenses -PathType Container) -or -not (Get-ChildItem vendor/licenses -File -Recurse)) {
         throw "Place redistribution licenses/notices for your FFmpeg and Deno builds in vendor/licenses before building. See RELEASE.md."
     }
     & $Python -m unittest discover -s tests -v
     if ($LASTEXITCODE -ne 0) { throw "Automated tests failed." }
+    & $Python packaging/collect_licenses.py
+    if ($LASTEXITCODE -ne 0) { throw "Could not collect dependency notices." }
     # The generated spec stays under build; the tracked spec is an equivalent manual entry point.
     & $Python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx --name StreamSave `
         --specpath build --distpath dist --workpath build/pyinstaller `
-        --version-file packaging/version_info.txt `
+        --version-file "$PSScriptRoot/packaging/version_info.txt" `
         --collect-all customtkinter --collect-all yt_dlp --collect-all yt_dlp_ejs `
-        --add-binary "vendor/ffmpeg.exe;vendor" --add-binary "vendor/ffprobe.exe;vendor" `
-        --add-binary "vendor/deno.exe;vendor" --add-data "vendor/licenses;vendor/licenses" main.py
+        --add-binary "$PSScriptRoot/vendor/ffmpeg.exe;vendor" --add-binary "$PSScriptRoot/vendor/ffprobe.exe;vendor" `
+        --add-binary "$PSScriptRoot/vendor/deno.exe;vendor" --add-data "$PSScriptRoot/vendor/licenses;vendor/licenses" "$PSScriptRoot/main.py"
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed. Review its output above." }
     if (-not (Test-Path dist/StreamSave.exe -PathType Leaf)) { throw "PyInstaller did not produce dist/StreamSave.exe." }
     $hash = (Get-FileHash dist/StreamSave.exe -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  StreamSave.exe" | Set-Content dist/SHA256SUMS.txt -Encoding ascii
+    Compress-Archive -Path vendor/licenses/* -DestinationPath dist/THIRD-PARTY-NOTICES.zip -Force
     & $Python -m pip freeze | Set-Content dist/build-environment.txt -Encoding utf8
     Write-Host "Built v1.0.0: $PSScriptRoot/dist/StreamSave.exe"
     Write-Host "SHA-256: $hash"
 } catch {
-    Write-Error "StreamSave build failed: $_"
+    [Console]::Error.WriteLine("StreamSave build failed: $_")
     exit 1
 } finally { Pop-Location }

@@ -15,7 +15,23 @@ A modern YouTube downloader for Windows 10 and Windows 11, built with Python 3.1
 
 Download only videos you own or have permission to save. This application does not supply cookies, bypass authentication, defeat DRM, or circumvent access controls. Unavailable, restricted and private videos may fail normally.
 
-## Install and run (PowerShell)
+## Windows installation: GitHub Releases (v1.0.0)
+
+1. Open this repository on GitHub and select **Releases**, then **v1.0.0**.
+2. Under **Assets**, download **StreamSave.exe** and **SHA256SUMS.txt**. The GitHub-generated source code archives are for developers.
+3. Save the EXE in a folder you can write to and double-click it. No installer, administrator access, Python, FFmpeg, or Deno installation is needed. Internet access is needed to fetch videos.
+
+The release targets 64-bit Windows 10/11. FFmpeg, ffprobe, Deno, Python, and the GUI assets are included in the single executable. Initial startup may take a few seconds while it extracts runtime files into your temporary directory. Keep sufficient free space there.
+
+Optionally verify the download in PowerShell; compare the result with `SHA256SUMS.txt` from the same release:
+
+```powershell
+Get-FileHash .\StreamSave.exe -Algorithm SHA256
+```
+
+The executable is unsigned. Windows may display a SmartScreen warning; verify the source and checksum before deciding whether to run it. To remove the app, delete the EXE; downloaded media stays in your chosen output folder.
+
+## Developer installation and normal Python execution (PowerShell)
 
 Install 64-bit Python 3.11 or newer from [python.org](https://www.python.org/downloads/windows/), including Tcl/Tk support. From this project folder:
 
@@ -42,7 +58,7 @@ Use a self-contained/static build matching your target architecture. If using a 
 
 ### YouTube JavaScript runtime
 
-Current yt-dlp needs an external JavaScript runtime for full YouTube support; the `yt-dlp[default]` dependency installs its EJS scripts, but does not install the runtime. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) and ensure `deno --version` works in a new terminal. Alternatively, place `deno.exe` in `vendor`; the app detects it and the build bundles it automatically. Without a runtime, some videos or formats can be unavailable. No remote component downloads are enabled by the app.
+The `yt-dlp[default]` dependency installs EJS scripts but does not install a JavaScript runtime. For source execution, install [Deno](https://docs.deno.com/runtime/getting_started/installation/) on PATH or place `deno.exe` in `vendor`. Release builds require and bundle Deno. No remote component downloads are enabled by the app.
 
 ## Use
 
@@ -58,15 +74,23 @@ Progress describes the current stream, so it can restart when switching from vid
 
 ## Build a standalone Windows application
 
-Build on Windows with Python and FFmpeg binaries matching the target architecture. Put `ffmpeg.exe` and `ffprobe.exe` in `vendor` even if they are on PATH. For self-contained YouTube runtime support, also put `deno.exe` there.
+Build on Windows with Python and standalone FFmpeg/Deno binaries matching the target architecture. The build script finds FFmpeg and ffprobe together in `vendor`, on PATH, or in common FFmpeg locations; it finds Deno in `vendor` or on PATH. Explicit paths are also supported. Place the tools' redistribution licenses/notices in `vendor/licenses` (see [release instructions](RELEASE.md)). Dependency installation is a separate developer step; the build script verifies dependencies and fails clearly if anything is missing.
 
 ```powershell
 .\.venv\Scripts\python -m pip install -r requirements-build.txt
-.\.venv\Scripts\python -m PyInstaller --noconfirm --clean StreamSave.spec
-.\dist\StreamSave\StreamSave.exe
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
+.\dist\StreamSave.exe
 ```
 
-Distribute the **entire `dist\StreamSave` folder**, for example as a ZIP. It contains the EXE, Python runtime, CustomTkinter theme/font assets, yt-dlp extractors/EJS scripts, and FFmpeg tools. End users do not need Python installed. The spec intentionally uses a directory bundle to simplify asset loading and diagnostics. Missing FFmpeg binaries cause an explicit build failure. A Deno installation on PATH remains necessary if it was not bundled.
+The script uses PyInstaller `--onefile --windowed`, runs unit tests, embeds version 1.0.0, and generates `dist/StreamSave.exe`, `dist/SHA256SUMS.txt`, `dist/THIRD-PARTY-NOTICES.zip`, and `dist/build-environment.txt`. It includes CustomTkinter themes/fonts, yt-dlp extractors/EJS, both FFmpeg tools, Deno, and dependency notices. For explicit tool locations:
+
+```powershell
+.\build.ps1 -FFmpegDirectory C:\ffmpeg\bin -DenoPath C:\tools\deno.exe
+```
+
+`StreamSave.spec` is an equivalent manual build configuration after binaries and notices have been staged in `vendor`: `.\.venv\Scripts\python -m PyInstaller --noconfirm --clean StreamSave.spec`. The build script's generated spec stays under ignored `build/`. Resource discovery uses `sys._MEIPASS/vendor` in the EXE and the project `vendor` folder or PATH in normal Python execution. yt-dlp receives that directory through `ffmpeg_location`.
+
+See [RELEASE.md](RELEASE.md) for validation, redistribution files, and manual GitHub upload steps. Nothing is published automatically.
 
 Before release, test on clean Windows 10 and 11 machines, with non-ASCII paths and an account without administrator privileges. Validate actual MP4 merging, MP3 extraction, cancellation during transfer and conversion, network failures, and runtime discovery. Unsigned executables can trigger Windows SmartScreen; signing is a separate release step. Review and include the licenses and notices required by Python, dependencies, your FFmpeg build and Deno when redistributing them.
 
@@ -92,6 +116,8 @@ downloader/
   utils.py              URL validation, tool discovery and formatting
 tests/                  Standard-library unittest suite
 vendor/                 Local FFmpeg and optional Deno binaries (not committed)
+build.ps1               Validated one-file build and SHA-256 generation
+packaging/              Windows version metadata and notice collection
 ```
 
 ## Troubleshooting

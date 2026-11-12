@@ -28,6 +28,9 @@ def restore_worker_streams():
 
 
 def main():
+    if "--diagnostics" in sys.argv:
+        from downloader.diagnostics import write_report
+        return write_report(sys.argv[sys.argv.index("--diagnostics") + 1])
     if "--worker" in sys.argv:
         restore_worker_streams()
         from downloader.worker import run
