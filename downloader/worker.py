@@ -8,7 +8,7 @@ from urllib.request import urlopen
 from PIL import Image
 import yt_dlp
 from .config import DownloadConfig
-from .utils import normalize_url, ffmpeg_directory, javascript_runtimes
+from .utils import parse_video_url, ffmpeg_directory, javascript_runtimes
 
 
 def emit(kind, **data):
@@ -32,10 +32,12 @@ class Logger:
 def run():
     try:
         request = json.loads(sys.stdin.readline())
-        url = normalize_url(request["url"])
+        platform, url = parse_video_url(request["url"])
         options = {"quiet": True, "no_warnings": False, "logger": Logger(),
                    "noplaylist": True, "socket_timeout": 20, "retries": 3,
                    "js_runtimes": javascript_runtimes()}
+        if platform == "TikTok":
+            options["allowed_extractors"] = ["vm[.]tiktok", "tiktok"]
         if request["action"] == "preview":
             with yt_dlp.YoutubeDL(options) as ydl:
                 info = ydl.extract_info(url, download=False)

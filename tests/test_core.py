@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from downloader.config import DownloadConfig
-from downloader.utils import normalize_url, duration_text
+from downloader.utils import normalize_url, parse_video_url, duration_text
 
 
 class URLTests(unittest.TestCase):
@@ -9,6 +9,35 @@ class URLTests(unittest.TestCase):
         for url in ("https://youtu.be/dQw4w9WgXcQ?t=10", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=abc", "https://m.youtube.com/shorts/dQw4w9WgXcQ", "https://youtube.com/live/dQw4w9WgXcQ"):
             with self.subTest(url=url):
                 self.assertEqual(normalize_url(url), "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+                self.assertEqual(parse_video_url(url)[0], "YouTube")
+
+    def test_tiktok_video_links(self):
+        for url, expected in (
+            ("http://tiktok.com/@creator.name/video/123456789?share=1#video",
+             "https://www.tiktok.com/@creator.name/video/123456789/"),
+            ("https://vm.tiktok.com/AbC_123?share=1", "https://vm.tiktok.com/AbC_123/"),
+            ("https://vt.tiktok.com/AbC123/", "https://vt.tiktok.com/AbC123/"),
+            ("https://www.tiktok.com/t/AbC123", "https://www.tiktok.com/t/AbC123/"),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(parse_video_url(url), ("TikTok", expected))
+                self.assertEqual(normalize_url(expected), expected)
+
+    def test_reject_malformed_and_non_video_tiktok_links(self):
+        for url in (
+            "https://tiktok.com.example.org/@creator/video/123",
+            "https://example.org@tiktok.com/@creator/video/123",
+            "https://@tiktok.com/@creator/video/123",
+            "https://vm.tiktok.com:0/AbC123",
+            "https://v\tm.tiktok.com/AbC123",
+            "https://vt.tiktok.com/%2fAbC123",
+            "https://vm.tiktok.com/AbC123/extra",
+            "https://www.tiktok.com/@creator",
+            "https://www.tiktok.com/@creator/live",
+            "https://www.tiktok.com/@creator/photo/123",
+        ):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                normalize_url(url)
 
     def test_invalid_links(self):
         for url in ("", "hello", "ftp://youtu.be/dQw4w9WgXcQ", "https://youtube.com.evil.org/watch?v=dQw4w9WgXcQ", "https://youtube.com@evil.org/watch?v=dQw4w9WgXcQ", "https://youtube.com/playlist?list=abc", "https://youtu.be/short", "https://youtu.be/dQw4w9WgXcQ/extra", "https://youtu.be:8080/dQw4w9WgXcQ", "https://youtu.be:bad/dQw4w9WgXcQ"):

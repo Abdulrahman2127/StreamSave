@@ -9,12 +9,27 @@ FORMATS = ("MP4 Video", "MP3 Audio")
 
 
 def normalize_url(value: str) -> str:
-    """Accept single YouTube video URLs and discard playlist/tracking arguments."""
+    return parse_video_url(value)[1]
+
+
+def parse_video_url(value: str) -> tuple[str, str]:
+    """Identify single-video URLs and strip tracking and playlist arguments."""
     try:
-        url = urlsplit(value.strip())
-        if url.scheme not in ("http", "https") or url.username or url.password or url.port:
+        value = value.strip()
+        if re.search(r"[\x00-\x20\x7f]", value):
             raise ValueError
+        url = urlsplit(value)
         host = (url.hostname or "").lower()
+        if url.scheme not in ("http", "https") or url.netloc.lower() != host:
+            raise ValueError
+        if host in ("tiktok.com", "www.tiktok.com", "m.tiktok.com"):
+            if re.fullmatch(r"/(?:@[A-Za-z0-9_.-]+/video/[0-9]+|t/[A-Za-z0-9_]+)/?", url.path):
+                return "TikTok", f"https://www.tiktok.com{url.path.rstrip('/')}/"
+            raise ValueError
+        if host in ("vm.tiktok.com", "vt.tiktok.com"):
+            if re.fullmatch(r"/[A-Za-z0-9_]+/?", url.path):
+                return "TikTok", f"https://{host}{url.path.rstrip('/')}/"
+            raise ValueError
         parts = url.path.strip("/").split("/")
         if host == "youtu.be" and len(parts) == 1:
             video_id = parts[0]
@@ -29,9 +44,9 @@ def normalize_url(value: str) -> str:
             raise ValueError
         if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
             raise ValueError
-        return f"https://www.youtube.com/watch?v={video_id}"
+        return "YouTube", f"https://www.youtube.com/watch?v={video_id}"
     except (ValueError, TypeError, AttributeError):
-        raise ValueError("Enter a valid YouTube video URL (watch, Shorts, or youtu.be).") from None
+        raise ValueError("Enter a valid YouTube or TikTok video URL.") from None
 
 
 def ffmpeg_directory() -> str | None:

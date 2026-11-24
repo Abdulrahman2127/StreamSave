@@ -1,6 +1,6 @@
 ﻿# StreamSave
 
-A modern YouTube downloader for Windows 10 and Windows 11, built with Python 3.11+, CustomTkinter, yt-dlp and FFmpeg. No API keys, advertisements, analytics or account login.
+A YouTube and TikTok video downloader for Windows 10 and Windows 11, built with Python 3.11+, CustomTkinter, yt-dlp and FFmpeg. No API keys, advertisements, analytics or account login.
 
 ## Features
 
@@ -15,13 +15,13 @@ A modern YouTube downloader for Windows 10 and Windows 11, built with Python 3.1
 
 Download only videos you own or have permission to save. This application does not supply cookies, bypass authentication, defeat DRM, or circumvent access controls. Unavailable, restricted and private videos may fail normally.
 
-## Windows installation: GitHub Releases (v1.0.0)
+## Windows installation from GitHub Releases
 
-1. Open this repository on GitHub and select **Releases**, then **v1.0.0**.
+1. Once v1.1.0 is published, open this repository on GitHub and select **Releases**, then **v1.1.0**.
 2. Under **Assets**, download **StreamSave.exe** and **SHA256SUMS.txt**. The GitHub-generated source code archives are for developers.
 3. Save the EXE in a folder you can write to and double-click it. No installer, administrator access, Python, FFmpeg, or Deno installation is needed. Internet access is needed to fetch videos.
 
-The release targets 64-bit Windows 10/11. FFmpeg, ffprobe, Deno, Python, and the GUI assets are included in the single executable. Initial startup may take a few seconds while it extracts runtime files into your temporary directory. Keep sufficient free space there.
+The release targets 64-bit Windows 10/11. FFmpeg, ffprobe, Deno, Python, yt-dlp, curl_cffi, and the GUI assets are included in the single executable. Initial startup may take a few seconds while it extracts runtime files into your temporary directory. Keep sufficient free space there.
 
 Optionally verify the download in PowerShell; compare the result with `SHA256SUMS.txt` from the same release:
 
@@ -58,11 +58,11 @@ Use a self-contained/static build matching your target architecture. If using a 
 
 ### YouTube JavaScript runtime
 
-The `yt-dlp[default]` dependency installs EJS scripts but does not install a JavaScript runtime. For source execution, install [Deno](https://docs.deno.com/runtime/getting_started/installation/) on PATH or place `deno.exe` in `vendor`. Release builds require and bundle Deno. No remote component downloads are enabled by the app.
+`requirements.txt` installs the pinned yt-dlp nightly, EJS scripts, and curl_cffi for browser impersonation. For source execution, install Deno on PATH or place `deno.exe` in `vendor`. Release builds bundle Deno. The app keeps remote component downloads disabled. [Deno installation](https://docs.deno.com/runtime/getting_started/installation/)
 
 ## Use
 
-1. Paste a YouTube watch, Shorts, live-video archive or youtu.be URL.
+1. Paste a YouTube watch, Shorts, live-video archive or youtu.be URL, or a TikTok video link. TikTok links can use `tiktok.com/@username/video/...`, `tiktok.com/t/...`, `vm.tiktok.com`, or `vt.tiktok.com`. StreamSave detects the platform automatically.
 2. Click **Preview** to fetch the title, artwork and duration. Preview is optional before downloading.
 3. Choose **MP4 Video** and a quality, or **MP3 Audio**. The quality menu is disabled for audio.
 4. Select an existing writable folder and click **Download**.
@@ -82,13 +82,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1
 .\dist\StreamSave.exe
 ```
 
-The script uses PyInstaller `--onefile --windowed`, runs unit tests, embeds version 1.0.0, and generates `dist/StreamSave.exe`, `dist/SHA256SUMS.txt`, `dist/THIRD-PARTY-NOTICES.zip`, and `dist/build-environment.txt`. It includes CustomTkinter themes/fonts, yt-dlp extractors/EJS, both FFmpeg tools, Deno, and dependency notices. For explicit tool locations:
+The script runs unit tests and uses `StreamSave.spec` to build the single-file, windowed v1.1.0 executable. It generates `dist/StreamSave.exe`, `dist/SHA256SUMS.txt`, `dist/THIRD-PARTY-NOTICES.zip`, and `dist/build-environment.txt`. The executable includes CustomTkinter themes and fonts, yt-dlp extractors and EJS, curl_cffi, both FFmpeg tools, Deno, and dependency notices. The script also accepts explicit tool locations.
 
 ```powershell
 .\build.ps1 -FFmpegDirectory C:\ffmpeg\bin -DenoPath C:\tools\deno.exe
 ```
 
-`StreamSave.spec` is an equivalent manual build configuration after binaries and notices have been staged in `vendor`: `.\.venv\Scripts\python -m PyInstaller --noconfirm --clean StreamSave.spec`. The build script's generated spec stays under ignored `build/`. Resource discovery uses `sys._MEIPASS/vendor` in the EXE and the project `vendor` folder or PATH in normal Python execution. yt-dlp receives that directory through `ffmpeg_location`.
+You can also run `.\.venv\Scripts\python -m PyInstaller --noconfirm --clean StreamSave.spec` after staging binaries and notices in `vendor`. Resource discovery uses `sys._MEIPASS/vendor` in the EXE and the project `vendor` folder or PATH in normal Python execution. yt-dlp receives that directory through `ffmpeg_location`.
 
 See [RELEASE.md](RELEASE.md) for validation, redistribution files, and manual GitHub upload steps. Nothing is published automatically.
 
@@ -103,7 +103,7 @@ Before release, test on clean Windows 10 and 11 machines, with non-ASCII paths a
 .\.venv\Scripts\python main.py --smoke-test
 ```
 
-The smoke test creates the real GUI and closes it automatically; it requires an interactive desktop. Unit tests do not access YouTube. See `VERIFICATION.md` for what was actually checked in the implementation environment.
+The smoke test creates the real GUI and closes it automatically. It requires an interactive desktop. Unit tests run offline. For real download checks, pass `--url` for a YouTube video and `--tiktok-url` for a TikTok video to `tests/verify_release.py` using links you have permission to download. See `VERIFICATION.md` for prior release verification.
 
 ```text
 main.py                 GUI entry point and isolated worker dispatch
@@ -124,7 +124,7 @@ packaging/              Windows version metadata and notice collection
 
 - **FFmpeg not found:** ensure both tools are in `vendor`, or in the same directory on PATH. Restart after changing PATH.
 - **Network / unavailable / sign-in error:** check your connection and whether the video is publicly accessible. Restricted content is not bypassed.
-- **YouTube extractor / JavaScript error:** check Deno, then update yt-dlp with `.\.venv\Scripts\python -m pip install --upgrade "yt-dlp[default]"`. Rebuild the EXE to incorporate updates. YouTube changes can require a newer extractor.
+- **YouTube or TikTok extractor error**. Check that the video is publicly accessible and the pinned dependencies are installed. For YouTube JavaScript errors, also check Deno. If a platform change requires a newer yt-dlp build, test it, update the pin, and rebuild the EXE.
 - **Format unavailable:** try Best Available, another lower resolution, or MP3. Not all videos offer every format.
 - **Permission denied:** choose a folder you can write to and ensure the output file is not open in another application.
 - **Cancelled download:** retry the same video, format and folder to reuse partial data. Delete unwanted `.part`, fragment and `.ytdl` files manually when no operation is running.

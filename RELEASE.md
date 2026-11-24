@@ -1,10 +1,10 @@
-# StreamSave v1.0.0 release procedure
+# StreamSave v1.1.0 release procedure
 
-Build target: Windows x64, version 1.0.0. The existing GUI and worker architecture are preserved. No release, tag, push, or remote change is performed by build.ps1.
+StreamSave v1.1.0 targets Windows x64 and supports YouTube and TikTok, including TikTok short links. The build script produces local release artifacts.
 
 ## Build inputs
 
-Install requirements-build.txt in a Windows Python 3.11+ environment. Provide standalone x64 ffmpeg.exe and ffprobe.exe together, and deno.exe. Use `vendor`, PATH, or the script's explicit path parameters. The build does not download or update dependencies automatically.
+Install `requirements-build.txt` in a Windows Python 3.11+ environment. It includes the pinned yt-dlp nightly with EJS and curl_cffi for browser impersonation. Provide standalone x64 `ffmpeg.exe`, `ffprobe.exe` and `deno.exe` in `vendor`, on PATH, or through the script's explicit path parameters. The build script uses `StreamSave.spec` to package the staged tools and installed dependencies.
 
 FFmpeg Windows builds are linked from [FFmpeg](https://ffmpeg.org/download.html); the build used here comes from [Gyan's builds](https://www.gyan.dev/ffmpeg/builds/). Deno binaries come from [Deno releases](https://github.com/denoland/deno/releases). Keep exact versions and provenance for each release.
 
@@ -31,11 +31,11 @@ Get-FileHash .\dist\StreamSave.exe -Algorithm SHA256
 Compress-Archive -Path .\vendor\licenses\* -DestinationPath .\dist\THIRD-PARTY-NOTICES.zip -Force
 ```
 
-Diagnostics executes the bundled FFmpeg, ffprobe and Deno, and checks yt-dlp's FFmpeg discovery. Paths in the report should be under the temporary `_MEI.../vendor` directory; that directory is removed when the process exits. `customtkinter_assets` should be true in the packaged report. The smoke test opens the real GUI briefly and closes it.
+Diagnostics executes the bundled FFmpeg, ffprobe and Deno. It checks yt-dlp's FFmpeg discovery and verifies that yt-dlp can use curl_cffi for browser impersonation. The report includes dependency versions and should identify version 1.1.0. Tool paths should be under the temporary `_MEI.../vendor` directory. `customtkinter_assets` should be true. The smoke test opens the GUI briefly and closes it.
 
-The repeatable artifact check is `.\.venv\Scripts\python tests/verify_release.py`. Add `--url YOUR_PERMITTED_YOUTUBE_URL` to also attempt real MP4 and MP3 downloads into a temporary folder. This check downloads nothing by default.
+Run `.\.venv\Scripts\python tests/verify_release.py` for the packaged checks. Add `--url YOUR_PERMITTED_YOUTUBE_URL` to test YouTube MP4 and MP3 downloads and `--tiktok-url YOUR_PERMITTED_TIKTOK_URL` to test TikTok MP4. Each platform uses a separate temporary output folder.
 
-Run `.\.venv\Scripts\python tests/verify_media.py` for a loopback HTTP download, MP3 conversion, MP4 merge and ffprobe check using synthetic media and binaries extracted from the EXE. This runs yt-dlp in the developer environment; it complements the packaged-worker checks and does not establish YouTube availability.
+Run `.\.venv\Scripts\python tests/verify_media.py` for a loopback HTTP download, MP3 conversion, MP4 merge and ffprobe check using synthetic media and binaries extracted from the EXE. This runs yt-dlp in the developer environment. Use the optional platform checks to verify live downloads.
 
 Test on a clean Windows 10/11 x64 machine without Python, FFmpeg or Deno on PATH. Check MP4 merging, MP3 conversion, preview, cancellation, resume, non-ASCII output paths, and normal-user permissions using media you own or have permission to download. See VERIFICATION.md for actual results and limitations. Sign the EXE if desired, then regenerate SHA256SUMS.txt after signing.
 
@@ -43,8 +43,10 @@ Test on a clean Windows 10/11 x64 machine without Python, FFmpeg or Deno on PATH
 
 1. Review the source changes and verification limitations. Commit the intended source changes yourself. Push only after approving that action; the assistant has not pushed anything.
 2. In the existing GitHub repository, open **Releases > Draft a new release**.
-3. Select/create tag **v1.0.0** on the reviewed commit, and title the release **StreamSave v1.0.0**.
+3. Select or create tag **v1.1.0** on the reviewed commit and title the release **StreamSave v1.1.0**.
 4. Attach `dist/StreamSave.exe`, `dist/SHA256SUMS.txt`, `dist/THIRD-PARTY-NOTICES.zip`, and any required corresponding-source/build archives. Optionally attach `dist/build-environment.txt` for reproducibility. Diagnostics contains local paths and is for local verification.
 5. Describe Windows x64 support, portable operation, bundled tools, the unsigned status, and any remaining validation limits from VERIFICATION.md. Review all assets and the checksum, then publish manually when ready.
 
-Suggested description: "StreamSave v1.0.0 for Windows x64. Download StreamSave.exe from Assets and run it; no Python, FFmpeg, or Deno installation is needed. Verify it using SHA256SUMS.txt. Download only media you own or have permission to save."
+Suggested description
+
+> StreamSave v1.1.0 downloads YouTube and TikTok videos on Windows x64. Download `StreamSave.exe` from Assets and verify it using `SHA256SUMS.txt`. The executable includes Python, FFmpeg, and Deno. Download only media you own or have permission to save.

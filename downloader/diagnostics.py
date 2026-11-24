@@ -8,7 +8,10 @@ from .utils import ffmpeg_directory, javascript_runtimes
 
 
 def write_report(destination):
+    from curl_cffi import __version__ as curl_cffi_version
+    from yt_dlp.networking.impersonate import ImpersonateTarget
     from yt_dlp.postprocessor.ffmpeg import FFmpegPostProcessor
+    from yt_dlp.version import __version__ as yt_dlp_version
 
     directory = ffmpeg_directory()
     if not directory:
@@ -28,8 +31,12 @@ def write_report(destination):
         processor = FFmpegPostProcessor(ydl)
         if not processor.available or not processor.probe_available:
             raise RuntimeError("yt-dlp could not use FFmpeg and ffprobe.")
-    report = {"version": "1.0.0", "frozen": bool(getattr(sys, "frozen", False)),
+        if not ydl._impersonate_target_available(ImpersonateTarget("chrome")):
+            raise RuntimeError("yt-dlp could not use curl_cffi browser impersonation.")
+    report = {"version": "1.1.0", "frozen": bool(getattr(sys, "frozen", False)),
               "resource_root": str(root), "tools": versions, "yt_dlp_ffmpeg": True,
+              "yt_dlp_version": yt_dlp_version, "curl_cffi_version": curl_cffi_version,
+              "yt_dlp_impersonation": True,
               "customtkinter_assets": (root / "customtkinter" / "assets").is_dir()}
     Path(destination).write_text(json.dumps(report, indent=2), encoding="utf-8")
     return 0

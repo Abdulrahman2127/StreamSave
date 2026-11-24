@@ -9,7 +9,7 @@ for name in ("ffmpeg.exe", "ffprobe.exe", "deno.exe"):
     if not tool.is_file():
         raise SystemExit(f"Missing {tool}. Run build.ps1; see README.md.")
     binaries.append((str(tool), "vendor"))
-for package in ("customtkinter", "yt_dlp", "yt_dlp_ejs"):
+for package in ("customtkinter", "yt_dlp", "yt_dlp_ejs", "curl_cffi"):
     data, binary, hidden = collect_all(package)
     datas += data
     binaries += binary

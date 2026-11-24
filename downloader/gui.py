@@ -15,7 +15,7 @@ class Application(ctk.CTk):
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
         super().__init__()
-        self.title("StreamSave • YouTube Downloader")
+        self.title("StreamSave • YouTube and TikTok Downloader")
         self.geometry("900x780")
         self.minsize(740, 700)
         self.configure(fg_color="#10141c")
@@ -40,7 +40,7 @@ class Application(ctk.CTk):
         line = ctk.CTkFrame(link, fg_color="transparent")
         line.grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 18))
         line.grid_columnconfigure(0, weight=1)
-        self.entry = ctk.CTkEntry(line, textvariable=self.url, placeholder_text="https://www.youtube.com/watch?v=…", height=42)
+        self.entry = ctk.CTkEntry(line, textvariable=self.url, placeholder_text="YouTube or TikTok video URL", height=42)
         self.entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.paste = ctk.CTkButton(line, text="Paste", width=74, height=42, command=self.paste_url)
         self.paste.grid(row=0, column=1, padx=(0, 8))
@@ -86,7 +86,7 @@ class Application(ctk.CTk):
         self.progress.set(0)
         self.stats = ctk.CTkLabel(body, text="0%   •   Ready", anchor="w", text_color="#99a8bd")
         self.stats.grid(row=7, column=0, sticky="ew", pady=(4, 0))
-        self.notice = ctk.CTkLabel(body, text="Paste a YouTube link, choose your options, then download.", anchor="w", justify="left", wraplength=740)
+        self.notice = ctk.CTkLabel(body, text="Paste a YouTube or TikTok video link, choose your options, then download.", anchor="w", justify="left", wraplength=740)
         self.notice.grid(row=8, column=0, sticky="ew", pady=(8, 0))
         ctk.CTkLabel(body, text="Download only content you own or have permission to save.", text_color="#71829b", anchor="w").grid(row=9, column=0, sticky="ew", pady=(14, 0))
         if not ffmpeg_directory():
@@ -134,7 +134,7 @@ class Application(ctk.CTk):
                 self.progress.stop()
                 self.progress.set(0)
                 self.set_busy(True)
-                self.notify("Fetching video information…" if request["action"] == "preview" else "Connecting to YouTube…")
+                self.notify("Fetching video information…" if request["action"] == "preview" else "Connecting to video service…")
         except (OSError, ValueError) as exc:
             self.notify(str(exc), error=True)
 

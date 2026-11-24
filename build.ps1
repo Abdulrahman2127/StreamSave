@@ -8,7 +8,7 @@ try {
         if (Test-Path .venv/Scripts/python.exe) { $Python = "$PSScriptRoot/.venv/Scripts/python.exe" }
         else { $Python = (Get-Command python -ErrorAction Stop).Source }
     }
-    & $Python -c "import sys; assert sys.platform == 'win32', 'Build on Windows'; assert sys.version_info >= (3,11); import customtkinter, PIL, yt_dlp, yt_dlp_ejs, PyInstaller"
+    & $Python -c "import sys; assert sys.platform == 'win32', 'Build on Windows'; assert sys.version_info >= (3,11); import customtkinter, PIL, yt_dlp, yt_dlp_ejs, curl_cffi, PyInstaller"
     if ($LASTEXITCODE -ne 0) { throw "Missing dependencies. Run: $Python -m pip install -r requirements-build.txt" }
     & $Python -c "import tkinter; app = tkinter.Tk(); app.withdraw(); app.destroy()"
     if ($LASTEXITCODE -ne 0) { throw "Tcl/Tk startup failed. Build from a normal Windows desktop with the full Python Tcl/Tk installation accessible." }
@@ -54,20 +54,15 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Automated tests failed." }
     & $Python packaging/collect_licenses.py
     if ($LASTEXITCODE -ne 0) { throw "Could not collect dependency notices." }
-    # The generated spec stays under build; the tracked spec is an equivalent manual entry point.
-    & $Python -m PyInstaller --noconfirm --clean --onefile --windowed --noupx --name StreamSave `
-        --specpath build --distpath dist --workpath build/pyinstaller `
-        --version-file "$PSScriptRoot/packaging/version_info.txt" `
-        --collect-all customtkinter --collect-all yt_dlp --collect-all yt_dlp_ejs `
-        --add-binary "$PSScriptRoot/vendor/ffmpeg.exe;vendor" --add-binary "$PSScriptRoot/vendor/ffprobe.exe;vendor" `
-        --add-binary "$PSScriptRoot/vendor/deno.exe;vendor" --add-data "$PSScriptRoot/vendor/licenses;vendor/licenses" "$PSScriptRoot/main.py"
+    & $Python -m PyInstaller --noconfirm --clean --distpath dist --workpath build/pyinstaller StreamSave.spec
     if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed. Review its output above." }
     if (-not (Test-Path dist/StreamSave.exe -PathType Leaf)) { throw "PyInstaller did not produce dist/StreamSave.exe." }
     $hash = (Get-FileHash dist/StreamSave.exe -Algorithm SHA256).Hash.ToLowerInvariant()
     "$hash  StreamSave.exe" | Set-Content dist/SHA256SUMS.txt -Encoding ascii
     Compress-Archive -Path vendor/licenses/* -DestinationPath dist/THIRD-PARTY-NOTICES.zip -Force
     & $Python -m pip freeze | Set-Content dist/build-environment.txt -Encoding utf8
-    Write-Host "Built v1.0.0: $PSScriptRoot/dist/StreamSave.exe"
+    $version = (Get-Item dist/StreamSave.exe).VersionInfo.ProductVersion
+    Write-Host "Built v${version}: $PSScriptRoot/dist/StreamSave.exe"
     Write-Host "SHA-256: $hash"
 } catch {
     [Console]::Error.WriteLine("StreamSave build failed: $_")
